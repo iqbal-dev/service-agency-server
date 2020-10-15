@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const ObjectId = require('mongodb').ObjectId;
-const fileUpload = require('express-fileUpload');
+const fileUpload = require('express-fileupload');
 const fs = require('fs-extra');
 require('dotenv').config();
 const MongoClient = require('mongodb').MongoClient;

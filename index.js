@@ -17,7 +17,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('doctors'))
 app.use(fileUpload())
 app.get('/', (req, res) => {
-    res.send('hello world')
+    res.send('hello service agency')
 })
 
 
@@ -86,6 +86,14 @@ client.connect(err => {
             .toArray((err, documents) => {
                 res.send(documents)
             })
+    })
+    app.post('/status/:id', (req, res) => {
+        console.log(req.body.status)
+        customerCollection.findOneAndUpdate({ _id: ObjectId(req.params.id) }, {
+            $set: {status: req.body.status}
+        })
+           
+        
     })
     app.post('/newService', (req, res) => {
         const title = req.body.title;

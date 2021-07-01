@@ -3,6 +3,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const ObjectId = require("mongodb").ObjectId;
 const fileUpload = require("express-fileupload");
+const nodemailer = require("nodemailer");
 const fs = require("fs-extra");
 require("dotenv").config();
 const MongoClient = require("mongodb").MongoClient;
@@ -25,6 +26,14 @@ app.use(express.static("doctors"));
 app.use(fileUpload());
 app.get("/", (req, res) => {
   res.send("hello service agency");
+});
+
+let transport = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "iqbaldevly@gmail.com",
+    pass: "iqbal 28877@@",
+  },
 });
 
 const client = new MongoClient(uri, {
@@ -57,6 +66,15 @@ client.connect((err) => {
       res.send(documents);
     });
   });
+  app.post("/editService/:id", (req, res) => {
+    console.log(req.body);
+    ServiceCollection.findOneAndUpdate(
+      { _id: ObjectId(req.params.id) },
+      {
+        $set: { ...req.body },
+      }
+    );
+  });
   app.get("/course/:id", (req, res) => {
     ServiceCollection.find({ _id: ObjectId(req.params.id) }).toArray(
       (err, documents) => {
@@ -64,11 +82,38 @@ client.connect((err) => {
       }
     );
   });
+  app.post("/selectPerson", (req, res) => {
+    console.log(req.body.title);
+    customerCollection
+      .find({ title: req.body.title })
+      .toArray((err, documents) => res.send(documents));
+  });
   app.post("/customerDetails", (req, res) => {
-    console.log("====================================");
-    console.log(req.body);
-    console.log("====================================");
     customerCollection.insertOne(req.body).then((result) => {
+      let mailOptions = {
+        from: "iqbaldevly@gmail.com",
+        to: req.body.email,
+        subject: "service seller confirmation mail",
+        text: `
+        Dear ${req.body.name},
+
+        Welcome to ${req.body.title}!
+
+        Thank you for registering! 
+
+         We’d love to invite you to our Orientation. Dates and times are below. It’s a great opportunity to meet your instructors and other students. You can learn more about what this program will be like and ask any questions you have.
+
+         Orientation date is ${req.body.title} . Your registration is confirmed.
+        
+       you session will started from ${req.body.startedDate}.`,
+      };
+      transport.sendMail(mailOptions, function (err, info) {
+        if (erro) {
+          console.log(erro);
+        } else {
+          console.log("emil sent: " + info.response);
+        }
+      });
       res.send({ message: "Order successfully done" });
     });
   });
@@ -81,7 +126,7 @@ client.connect((err) => {
   });
   app.post("/comments", (req, res) => {
     commentsCollection.insertOne(req.body).then((result) => {
-      res.send(result);
+      res.send(result.CommandResult.ops);
     });
   });
   app.get("/commentsDetails", (req, res) => {
@@ -140,6 +185,11 @@ client.connect((err) => {
         });
     });
   });
+  app.delete("/mentor/:id", (req, res) => {
+    mentorCollection
+      .findOneAndDelete({ _id: ObjectId(req.params.id) })
+      .then((result) => res.send(result));
+  });
   app.get("/mentor", (req, res) => {
     mentorCollection.find({}).toArray((err, documents) => {
       res.send(documents);
@@ -154,15 +204,27 @@ client.connect((err) => {
     });
   });
   app.post("/status/:id", (req, res) => {
-    customerCollection
-      .findOneAndUpdate(
-        { _id: ObjectId(req.params.id) },
-        {
-          $set: { status: req.body.status },
-        }
-      )
-      .then(() => res.send(req.body.status))
-      .catch((err) => console.error(err));
+    if (req.body.status) {
+      customerCollection
+        .findOneAndUpdate(
+          { _id: ObjectId(req.params.id) },
+          {
+            $set: { status: req.body.status },
+          }
+        )
+        .then(() => res.send(req.body.status))
+        .catch((err) => console.error(err));
+    } else {
+      customerCollection
+        .findOneAndUpdate(
+          { _id: ObjectId(req.params.id) },
+          {
+            $set: { muteStatus: req.body.muteStatus },
+          }
+        )
+        .then(() => res.send(req.body.status))
+        .catch((err) => console.error(err));
+    }
   });
   app.delete("/delete/:id", (req, res) => {
     console.log(req.params.id);
@@ -171,6 +233,7 @@ client.connect((err) => {
       .then((result) => res.send(result));
   });
   app.post("/newService", (req, res) => {
+    console.log(req.body.date);
     const title = req.body.title;
     const price = req.body.price;
     const description = req.body.description;
@@ -178,6 +241,7 @@ client.connect((err) => {
     const language = req.body.language;
     const mentorName = req.body.mentorName;
     const courseOutline = req.body.courseOutline;
+    const date = req.body.date;
     const file = req.files.files;
     const filePath = `${__dirname}/doctors/${file.name}`;
     file.mv(filePath, (err) => {
@@ -201,6 +265,7 @@ client.connect((err) => {
         mentorName,
         price,
         courseOutline,
+        date,
       }).then((result) => {
         res.send({ message: "successfully created" });
       });

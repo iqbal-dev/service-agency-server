@@ -56,6 +56,9 @@ client.connect((err) => {
   const mentorCollection = client
     .db(`${process.env.DB_NAME}`)
     .collection("mentorCollection");
+  const cancelCollection = client
+    .db(`${process.env.DB_NAME}`)
+    .collection("cancelCollection");
 
   console.log("database");
   app.post("/agency", (req, res) => {
@@ -73,6 +76,11 @@ client.connect((err) => {
       {
         $set: { ...req.body },
       }
+    );
+  });
+  app.delete("/deleteService/:id", (req, res) => {
+    ServiceCollection.findOneAndDelete({ _id: ObjectId(req.params.id) }).then(
+      (result) => res.send(result)
     );
   });
   app.get("/course/:id", (req, res) => {
@@ -107,9 +115,9 @@ client.connect((err) => {
         
        you session will started from ${req.body.startedDate}.`,
       };
-      transport.sendMail(mailOptions, function (err, info) {
-        if (erro) {
-          console.log(erro);
+      transport.sendMail(mailOptions, function (error, info) {
+        if (error) {
+          console.log(error);
         } else {
           console.log("emil sent: " + info.response);
         }
@@ -117,6 +125,60 @@ client.connect((err) => {
       res.send({ message: "Order successfully done" });
     });
   });
+  app.post("/orderCancel", function (req, res) {
+    console.log(req.body);
+    cancelCollection.insertOne(req.body).then((result) => {
+      let mailOptions = {
+        from: "iqbaldevly@gmail.com",
+        to: req.body.email,
+        subject: "service seller confirmation mail for cancellation",
+        text: `
+          Dear ${req.body.name},
+  
+  
+          Thank you for request!
+
+          we reviewing your request after 72hour you will get your result. If your request is valid then you will get back the 90% money and 10%will be deducted`,
+      };
+      transport.sendMail(mailOptions, function (error, info) {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("emil sent: " + info.response);
+        }
+      });
+      res.send({ message: "Order is request for cancel" });
+    });
+  });
+
+  app.get("/cancelOrderList", (req, res) => {
+    cancelCollection.find({}).toArray((err, documents) => {
+      res.send(documents);
+    });
+  });
+  app.delete("/deleteCancelList/:id", (req, res) => {
+    cancelCollection
+      .findOneAndDelete({ _id: ObjectId(req.params.id) })
+      .then((result) => res.send(result));
+  });
+  app.delete("/deleteOrderlList", (req, res) => {
+    customerCollection
+      .findOneAndDelete({ title: req.body.title, email: req.body.email })
+      .then((result) => res.send(result));
+  });
+
+  app.post("/orderStatus/:id", (req, res) => {
+    customerCollection
+      .findOneAndUpdate(
+        { _id: ObjectId(req.params.id) },
+        {
+          $set: { muteStatus: req.body.muteStatus },
+        }
+      )
+      .then(() => res.send(req.body.status))
+      .catch((err) => console.error(err));
+  });
+
   app.get("/orderlist", (req, res) => {
     customerCollection
       .find({ email: req.query.email })
@@ -130,6 +192,11 @@ client.connect((err) => {
     });
   });
   app.get("/commentsDetails", (req, res) => {
+    commentsCollection.find({}).toArray((err, documents) => {
+      res.send(documents);
+    });
+  });
+  app.get("/customerDetails", (req, res) => {
     commentsCollection.find({}).toArray((err, documents) => {
       res.send(documents);
     });
